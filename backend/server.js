@@ -16,10 +16,18 @@ require('./config/db');
 // Import routes
 const authRoutes = require('./routes/auth');
 const resumeRoutes = require('./routes/resume');
+const jobsRoutes = require('./routes/jobs');
+
+//dashboard and notifications
+const dashboardRoutes = require('./routes/dashboard');
+const notificationRoutes = require('./routes/notifications');
 
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/resume', resumeRoutes);
+app.use('/api/jobs', jobsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {
@@ -34,4 +42,6 @@ app.listen(PORT, () => {
   console.log(`   POST http://localhost:${PORT}/api/auth/login`);
   console.log(`   POST http://localhost:${PORT}/api/resume/upload (Auth required)`);
   console.log(`   GET  http://localhost:${PORT}/api/resume/profile (Auth required)`);
+  console.log(`   POST http://localhost:${PORT}/api/jobs/create (Admin required)`);
+  console.log(`   GET  http://localhost:${PORT}/api/jobs (Auth required)`);
 });
