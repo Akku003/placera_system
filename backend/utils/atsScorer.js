@@ -7,102 +7,112 @@ class ATSScorer {
    * @returns {Object} Detailed matching report with score
    */
   calculateJobMatch(candidateProfile, candidateSkills, job) {
-    const report = {
-      overall_score: 0,
-      eligible: true,
-      eligibility_checks: {},
-      skills_analysis: {},
-      recommendations: [],
-      breakdown: {}
-    };
+  console.log('\n=== ATS SCORER DEBUG ===');
+  console.log('Candidate Profile:', candidateProfile);
+  console.log('Candidate Skills:', candidateSkills);
+  console.log('Job Requirements:', job);
 
-    // 1. ELIGIBILITY CHECKS (Pass/Fail - No partial credit)
-    report.eligibility_checks = this.checkEligibility(candidateProfile, job);
-    report.eligible = report.eligibility_checks.all_passed;
+  // Calculate skill match
+  const requiredSkills = job.skills || [];
+  const matchedSkills = [];
+  const missingSkills = [];
 
-    if (!report.eligible) {
-      report.overall_score = 0;
-      report.recommendations.push('You do not meet the eligibility criteria for this job');
-      return report;
-    }
-
-    // 2. SKILLS MATCHING (50% weight)
-    const skillsScore = this.calculateSkillsMatch(candidateSkills, job.skills || []);
-    report.skills_analysis = skillsScore;
-    report.breakdown.skills = skillsScore.score;
-
-    // 3. PROFILE COMPLETENESS (20% weight)
-    const completenessScore = this.calculateProfileCompleteness(candidateProfile);
-    report.breakdown.profile_completeness = completenessScore.score;
-    report.recommendations.push(...completenessScore.recommendations);
-
-    // 4. ACADEMIC PERFORMANCE (30% weight)
-    const academicScore = this.calculateAcademicScore(candidateProfile, job);
-    report.breakdown.academic_performance = academicScore.score;
-
-    // Calculate weighted overall score
-    report.overall_score = Math.round(
-      (skillsScore.score * 0.5) +
-      (completenessScore.score * 0.2) +
-      (academicScore.score * 0.3)
+  requiredSkills.forEach(reqSkill => {
+    const matched = candidateSkills.some(candSkill => 
+      candSkill.toLowerCase().includes(reqSkill.toLowerCase()) ||
+      reqSkill.toLowerCase().includes(candSkill.toLowerCase())
     );
-
-    // Generate recommendations based on score
-    if (report.overall_score >= 80) {
-      report.recommendations.push('🎉 Excellent match! You are a strong candidate for this position.');
-    } else if (report.overall_score >= 60) {
-      report.recommendations.push('✅ Good match! Consider applying to this position.');
-    } else if (report.overall_score >= 40) {
-      report.recommendations.push('⚠️ Moderate match. You may want to upskill before applying.');
+    
+    if (matched) {
+      matchedSkills.push(reqSkill);
     } else {
-      report.recommendations.push('❌ Low match. Consider developing relevant skills first.');
+      missingSkills.push(reqSkill);
     }
+  });
 
-    return report;
+  const skillsScore = requiredSkills.length > 0 
+    ? (matchedSkills.length / requiredSkills.length) * 100 
+    : 0;
+
+  // Calculate profile completeness
+  let profileScore = 0;
+  if (candidateProfile.f_name) profileScore += 20;
+  if (candidateProfile.email) profileScore += 20;
+  if (candidateProfile.cgpa) profileScore += 20;
+  if (candidateProfile.branch) profileScore += 20;
+  if (candidateSkills.length >= 5) profileScore += 20;
+
+  // Calculate academic score
+  let academicScore = 0;
+  if (candidateProfile.cgpa) {
+    const cgpa = parseFloat(candidateProfile.cgpa);
+    if (cgpa >= 9.0) academicScore = 100;
+    else if (cgpa >= 8.0) academicScore = 90;
+    else if (cgpa >= 7.0) academicScore = 80;
+    else if (cgpa >= 6.0) academicScore = 70;
+    else academicScore = 60;
   }
+
+  // Check eligibility
+  const eligibilityChecks = this.checkEligibility(candidateProfile, job);
+
+  // Calculate final ATS score
+  const atsScore = (skillsScore * 0.5) + (profileScore * 0.3) + (academicScore * 0.2);
+
+  const result = {
+    ats_score: Math.round(atsScore),
+    skills_score: Math.round(skillsScore),
+    profile_score: Math.round(profileScore),
+    academic_score: Math.round(academicScore),
+    matched_skills: matchedSkills,
+    missing_skills: missingSkills,
+    total_required_skills: requiredSkills.length,
+    eligible: eligibilityChecks.eligible,
+    eligibility_checks: eligibilityChecks
+  };
+
+  console.log('ATS Result:', result);
+  console.log('=======================\n');
+
+  return result;
+}
 
   checkEligibility(candidateProfile, job) {
     const checks = {
-      cgpa_check: { passed: true, message: '' },
-      backlogs_check: { passed: true, message: '' },
-      branch_check: { passed: true, message: '' },
-      all_passed: true
+      cgpa_met: true,
+      backlogs_met: true,
+      branch_allowed: true,
+      placed_status: true,
+      reasons: []
     };
 
-    if (job.min_cgpa && candidateProfile.cgpa) {
-      const candidateCGPA = parseFloat(candidateProfile.cgpa);
-      const minCGPA = parseFloat(job.min_cgpa);
-      
-      if (candidateCGPA < minCGPA) {
-        checks.cgpa_check.passed = false;
-        checks.cgpa_check.message = `Required CGPA: ${minCGPA}, Your CGPA: ${candidateCGPA}`;
-        checks.all_passed = false;
-      } else {
-        checks.cgpa_check.message = `✓ CGPA requirement met (${candidateCGPA} >= ${minCGPA})`;
+    // Check if student is already placed
+    if (candidateProfile && candidateProfile.placement_status === 'placed') {
+      checks.placed_status = false;
+      checks.reasons.push('Student is already placed and cannot apply for more positions');
+    }
+
+    // Check CGPA
+    if (job.min_cgpa && candidateProfile && candidateProfile.cgpa < job.min_cgpa) {
+      checks.cgpa_met = false;
+      checks.reasons.push(`CGPA ${candidateProfile.cgpa} is below required ${job.min_cgpa}`);
+    }
+
+    // Check backlogs
+    if (job.max_backlogs !== null && candidateProfile && candidateProfile.backlogs > job.max_backlogs) {
+      checks.backlogs_met = false;
+      checks.reasons.push(`Current backlogs (${candidateProfile.backlogs}) exceed maximum allowed (${job.max_backlogs})`);
+    }
+
+    // Check branch
+    if (job.allowed_branches && job.allowed_branches.length > 0) {
+      if (candidateProfile && !job.allowed_branches.includes(candidateProfile.branch)) {
+        checks.branch_allowed = false;
+        checks.reasons.push(`Branch ${candidateProfile.branch} is not in allowed branches: ${job.allowed_branches.join(', ')}`);
       }
     }
 
-    if (job.max_backlogs !== null && job.max_backlogs !== undefined) {
-      const candidateBacklogs = candidateProfile.backlogs || 0;
-      const maxBacklogs = parseInt(job.max_backlogs);
-      
-      if (candidateBacklogs > maxBacklogs) {
-        checks.backlogs_check.passed = false;
-        checks.backlogs_check.message = `Maximum backlogs: ${maxBacklogs}, Yours: ${candidateBacklogs}`;
-        checks.all_passed = false;
-      }
-    }
-
-    if (job.allowed_branches && Array.isArray(job.allowed_branches) && job.allowed_branches.length > 0) {
-      const candidateBranch = candidateProfile.branch?.toUpperCase().trim();
-      const allowedBranches = job.allowed_branches.map(b => b.toUpperCase().trim());
-      
-      if (!candidateBranch || !allowedBranches.includes(candidateBranch)) {
-        checks.branch_check.passed = false;
-        checks.branch_check.message = `Allowed: ${job.allowed_branches.join(', ')}, Yours: ${candidateBranch || 'Not specified'}`;
-        checks.all_passed = false;
-      }
-    }
+    checks.eligible = checks.cgpa_met && checks.backlogs_met && checks.branch_allowed && checks.placed_status;
 
     return checks;
   }

@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
+const { authenticateToken } = require('../middleware/auth');
 
 // Register
 router.post('/register', async (req, res) => {
@@ -109,6 +110,28 @@ router.post('/login', async (req, res) => {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed' });
     }
+});
+
+// Delete account
+router.delete('/account', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Delete in order due to foreign key constraints
+    await pool.query('DELETE FROM notifications WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM job_applications WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM candidate_skills WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM candidate_profiles WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    res.json({
+      success: true,
+      message: 'Account deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
 });
 
 module.exports = router;

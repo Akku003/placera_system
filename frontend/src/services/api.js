@@ -38,6 +38,7 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/register', data),
+  deleteAccount: () => api.delete('/auth/account'),
 };
 
 // RESUME
@@ -53,6 +54,9 @@ export const jobsAPI = {
   getAll: () => api.get('/jobs'),
   getById: (id) => api.get(`/jobs/${id}`),
   create: (formData) => api.post('/jobs/create', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  update: (id, formData) => api.put(`/jobs/${id}`, formData, {  
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   apply: (jobId, data) => api.post(`/jobs/${jobId}/apply`, data),
@@ -80,6 +84,14 @@ export const notificationsAPI = {
   markAllAsRead: () => api.patch('/notifications/mark-all-read'),
   delete: (id) => api.delete(`/notifications/${id}`),
   broadcast: (data) => api.post('/notifications/broadcast', data),
+};
+
+export const adminAPI = {
+  getCandidates: () => api.get('/admin/candidates'),
+  updatePlacementStatus: (userId, status) => 
+    api.patch(`/admin/candidates/${userId}/placement-status`, { placement_status: status }),
+  bulkUpdatePlacementStatus: (userIds, status) =>
+    api.post('/admin/candidates/bulk-placement-status', { user_ids: userIds, placement_status: status }),
 };
 
 export default api;

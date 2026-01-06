@@ -28,7 +28,7 @@ const Navbar = ({ onMenuClick }) => {
               <Menu size={24} />
             </button>
             <Link to={dashboardPath} className="flex items-center ml-2">
-              <img src="/logo.png" alt="Placera" className="h-8" />
+              <img src="/logo.png" alt="Placera" className="h-10" />
             </Link>
           </div>
 
@@ -37,6 +37,7 @@ const Navbar = ({ onMenuClick }) => {
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {isDark ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-gray-600" />}
             </button>
@@ -51,7 +52,7 @@ const Navbar = ({ onMenuClick }) => {
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-1 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+              className="flex items-center space-x-1 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             >
               <LogOut size={16} />
               <span>Logout</span>

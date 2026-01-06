@@ -17,6 +17,8 @@ require('./config/db');
 const authRoutes = require('./routes/auth');
 const resumeRoutes = require('./routes/resume');
 const jobsRoutes = require('./routes/jobs');
+const adminRoutes = require('./routes/admin');
+
 
 //dashboard and notifications
 const dashboardRoutes = require('./routes/dashboard');
@@ -28,6 +30,7 @@ app.use('/api/resume', resumeRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {

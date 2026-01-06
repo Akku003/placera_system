@@ -82,11 +82,38 @@ router.post('/create', authenticateToken, isAdmin, upload.single('jd_file'), asy
     }
 
     // Manual overrides from request body (if provided)
-    const skills = req.body.skills ? JSON.parse(req.body.skills) : parsedJD.skills;
-    const min_cgpa = req.body.min_cgpa ? parseFloat(req.body.min_cgpa) : parsedJD.min_cgpa;
-    const max_backlogs = req.body.max_backlogs !== undefined ? parseInt(req.body.max_backlogs) : parsedJD.max_backlogs;
-    const allowed_branches = req.body.allowed_branches ? JSON.parse(req.body.allowed_branches) : parsedJD.allowed_branches;
+    let skills = parsedJD.skills;
+    if (req.body.skills) {
+      try {
+        // Try to parse if it's a JSON string
+        skills = JSON.parse(req.body.skills);
+      } catch (e) {
+        // If parse fails, it might be a comma-separated string
+        skills = req.body.skills.split(',').map(s => s.trim()).filter(s => s);
+      }
+    }
+    const min_cgpa = req.body.min_cgpa ? parseFloat(req.body.min_cgpa) : (parsedJD.min_cgpa ? parseFloat(parsedJD.min_cgpa) : null);
+
+    const max_backlogs = req.body.max_backlogs !== undefined && req.body.max_backlogs !== ''
+      ? parseInt(req.body.max_backlogs)
+      : (parsedJD.max_backlogs !== undefined ? parseInt(parsedJD.max_backlogs) : null);
+
+    let allowed_branches = parsedJD.allowed_branches;
+    if (req.body.allowed_branches) {
+      try {
+        allowed_branches = JSON.parse(req.body.allowed_branches);
+      } catch (e) {
+        allowed_branches = parsedJD.allowed_branches;
+      }
+    }
+
     const package_lpa = req.body.package_lpa ? parseFloat(req.body.package_lpa) : parsedJD.package_lpa;
+
+    console.log('=== JOB CREATION DEBUG ===');
+    console.log('min_cgpa:', min_cgpa, typeof min_cgpa);
+    console.log('max_backlogs:', max_backlogs, typeof max_backlogs);
+    console.log('skills:', skills);
+    console.log('=========================');
 
     // Create job
     const jobQuery = `
@@ -511,7 +538,17 @@ router.get('/:id/match-preview', authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      match_report: matchReport,
+      ats_score: matchReport.ats_score || 0,
+      match_report: {
+        skills_score: matchReport.skills_score || 0,
+        profile_score: matchReport.profile_score || 0,
+        academic_score: matchReport.academic_score || 0,
+        eligible: matchReport.eligible || false,
+        matched_skills: matchReport.matched_skills || [],
+        missing_skills: matchReport.missing_skills || [],
+        total_required_skills: (job.skills || []).length,
+        eligibility_reasons: matchReport.eligibility_checks?.reasons || []
+      },
       job_details: {
         title: job.title,
         company: job.company_name,
@@ -561,6 +598,75 @@ router.post('/:id/bulk-shortlist', authenticateToken, isAdmin, async (req, res) 
   }
 });
 
+// Update job (Admin only)
+router.put('/:id', authenticateToken, isAdmin, upload.single('jd_file'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, company_name, description, skills, min_cgpa, max_backlogs, allowed_branches, package_lpa } = req.body;
+
+    // Get existing job
+    const existingJob = await pool.query('SELECT * FROM jobs WHERE id = $1', [id]);
+    if (existingJob.rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Get or create company
+    let companyResult = await pool.query('SELECT id FROM companies WHERE name = $1', [company_name]);
+    let company_id;
+
+    if (companyResult.rows.length === 0) {
+      const newCompany = await pool.query(
+        'INSERT INTO companies (name) VALUES ($1) RETURNING id',
+        [company_name]
+      );
+      company_id = newCompany.rows[0].id;
+    } else {
+      company_id = companyResult.rows[0].id;
+    }
+
+    // Parse skills if string
+    const skillsArray = typeof skills === 'string' ? skills.split(',').map(s => s.trim()) : skills;
+    const branchesArray = typeof allowed_branches === 'string' ? JSON.parse(allowed_branches) : allowed_branches;
+
+    const updateQuery = `
+      UPDATE jobs 
+      SET 
+        title = $1,
+        description = $2,
+        skills = $3,
+        company_id = $4,
+        package_lpa = $5,
+        min_cgpa = $6,
+        max_backlogs = $7,
+        allowed_branches = $8,
+        jd_file_path = COALESCE($9, jd_file_path)
+      WHERE id = $10
+      RETURNING *
+    `;
+
+    const result = await pool.query(updateQuery, [
+      title,
+      description,
+      skillsArray,
+      company_id,
+      package_lpa,
+      min_cgpa || null,
+      max_backlogs || null,
+      branchesArray,
+      req.file ? req.file.path : null,
+      id
+    ]);
+
+    res.json({
+      success: true,
+      message: 'Job updated successfully',
+      job: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating job:', error);
+    res.status(500).json({ error: 'Failed to update job', details: error.message });
+  }
+});
 
 
 module.exports = router;
