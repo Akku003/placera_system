@@ -23,6 +23,8 @@ const adminRoutes = require('./routes/admin');
 //dashboard and notifications
 const dashboardRoutes = require('./routes/dashboard');
 const notificationRoutes = require('./routes/notifications');
+const chatbotRoutes = require('./routes/chatbot');
+const statisticsRoutes = require('./routes/statistics');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -31,6 +33,8 @@ app.use('/api/jobs', jobsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/statistics', statisticsRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {

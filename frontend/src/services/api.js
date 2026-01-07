@@ -94,4 +94,16 @@ export const adminAPI = {
     api.post('/admin/candidates/bulk-placement-status', { user_ids: userIds, placement_status: status }),
 };
 
+// Add to the existing file, after other exports
+
+export const chatbotAPI = {
+  checkEligibility: (jobId) => api.post('/chatbot/check-eligibility', { jobId }),
+  getInterviewQuestions: (companyName, questionType) => 
+    api.post('/chatbot/interview-questions', { companyName, questionType }),
+  getSyllabus: (category) => api.post('/chatbot/syllabus', { category }),
+  getCompanyDetails: (companyName) => api.post('/chatbot/company-details', { companyName }),
+  getCompanies: () => api.get('/chatbot/companies'),
+  getJobs: () => api.get('/chatbot/jobs')
+};
+
 export default api;

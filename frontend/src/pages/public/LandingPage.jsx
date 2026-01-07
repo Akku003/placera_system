@@ -122,6 +122,98 @@ const LandingPage = () => {
             />
           </div>
         </div>
+        {/* ====== STATISTICS SECTION - ADD THIS ====== */}
+        <section className="py-20 bg-gray-50 dark:bg-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Our Track Record
+              </h2>
+              <p className="text-xl text-gray-600 dark:text-gray-400">
+                Proven Placement Success (2020-2022)
+              </p>
+            </div>
+
+            {/* Statistics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+              <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div className="text-5xl font-bold text-primary-600 dark:text-primary-400 mb-2">
+                  956+
+                </div>
+                <div className="text-gray-600 dark:text-gray-400 font-medium">Students Placed</div>
+                <div className="text-sm text-gray-500 dark:text-gray-500 mt-1">2020-2022</div>
+              </div>
+
+              <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div className="text-5xl font-bold text-green-600 dark:text-green-400 mb-2">
+                  74+
+                </div>
+                <div className="text-gray-600 dark:text-gray-400 font-medium">Company Visits</div>
+                <div className="text-sm text-gray-500 dark:text-gray-500 mt-1">Unique recruiters</div>
+              </div>
+
+              <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div className="text-5xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                  79.8%
+                </div>
+                <div className="text-gray-600 dark:text-gray-400 font-medium">Placement Rate</div>
+                <div className="text-sm text-gray-500 dark:text-gray-500 mt-1">Success rate</div>
+              </div>
+
+              <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div className="text-5xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
+                  15 LPA
+                </div>
+                <div className="text-gray-600 dark:text-gray-400 font-medium">Highest Package</div>
+                <div className="text-sm text-gray-500 dark:text-gray-500 mt-1">Maximum offered</div>
+              </div>
+            </div>
+
+            {/* Top Companies */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+              <h3 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-8">
+                Top Recruiting Companies
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {[
+                  { name: 'Accenture', count: 119 },
+                  { name: 'Infosys', count: 118 },
+                  { name: 'Cognizant', count: 107 },
+                  { name: 'DXC', count: 55 },
+                  { name: 'EY', count: 49 },
+                  { name: 'TCS', count: 46 },
+                  { name: 'UST Global', count: 32 },
+                  { name: 'Wipro', count: 25 },
+                  { name: 'VVDN', count: 25 },
+                  { name: 'Envestnet', count: 24 }
+                ].map((company) => (
+                  <div
+                    key={company.name}
+                    className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors"
+                  >
+                    <div className="font-bold text-lg text-gray-900 dark:text-white mb-1">
+                      {company.name}
+                    </div>
+                    <div className="text-sm text-primary-600 dark:text-primary-400 font-semibold">
+                      {company.count} placed
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="text-center mt-12">
+              <button
+                onClick={() => navigate('/register')}
+                className="px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-semibold text-lg shadow-lg"
+              >
+                Join Our Success Story
+              </button>
+            </div>
+          </div>
+        </section>
+        {/* ====== END STATISTICS SECTION ====== */}
       </section>
 
       {/* About Section */}

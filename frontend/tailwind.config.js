@@ -26,7 +26,17 @@ export default {
           dark: '#16a34a',
         }
       },
-    },
+      //animations
+      animation: {
+        'slideIn': 'slideIn 0.3s ease-out',
+      },
+      keyframes: {
+        slideIn: {
+          '0%': { transform: 'translateY(100%)', opacity: 0 },
+          '100%': { transform: 'translateY(0)', opacity: 1 },
+        }
+    }
   },
+},
   plugins: [],
 }
