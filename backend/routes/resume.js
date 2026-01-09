@@ -181,5 +181,24 @@ router.get('/profile', authenticateToken, async (req, res) => {
     }
 });
 
+router.get('/view/:candidateId', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+    
+    const result = await pool.query(
+      'SELECT file_path FROM resumes WHERE candidate_id = $1',
+      [candidateId]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'Resume not found' });
+    }
+
+    res.json({ resumeUrl: result.rows[0].file_path });
+  } catch (error) {
+    console.error('Resume view error:', error);
+    res.status(500).json({ error: 'Failed to fetch resume' });
+  }
+});
 
 module.exports = router;
