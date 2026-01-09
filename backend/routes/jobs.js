@@ -24,6 +24,14 @@ const storage = multer.diskStorage({
   }
 });
 
+
+const adminOnly = async (req, res, next) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+};
+
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
@@ -414,6 +422,45 @@ router.get('/:id/applications', authenticateToken, isAdmin, async (req, res) => 
     console.error('Error fetching job applications:', error);
     res.status(500).json({ error: 'Failed to fetch applications' });
   }
+});
+
+router.get('/:jobId/applications', authenticateToken, adminOnly, async (req, res) => {
+    try {
+        const { jobId } = req.params;
+        const { sort_by } = req.query;
+
+        let orderClause = 'ORDER BY a.applied_at DESC';
+        if (sort_by === 'ats_score') {
+            orderClause = 'ORDER BY cp.ats_score DESC NULLS LAST';
+        }
+
+        const result = await pool.query(`
+            SELECT 
+                a.id,
+                a.job_id,
+                a.user_id,
+                a.status,
+                a.applied_at,
+                cp.f_name || ' ' || cp.l_name as candidate_name,
+                u.email,
+                cp.branch,
+                cp.cgpa,
+                cp.ats_score,  -- Make sure this is included
+                j.job_title,
+                j.company_name
+            FROM applications a
+            JOIN candidate_profiles cp ON a.user_id = cp.user_id
+            JOIN users u ON a.user_id = u.id
+            JOIN jobs j ON a.job_id = j.id
+            WHERE a.job_id = $1
+            ${orderClause}
+        `, [jobId]);
+
+        res.json({ applications: result.rows });
+    } catch (error) {
+        console.error('Error fetching applications:', error);
+        res.status(500).json({ error: 'Failed to fetch applications' });
+    }
 });
 
 // Update application status (Admin only)

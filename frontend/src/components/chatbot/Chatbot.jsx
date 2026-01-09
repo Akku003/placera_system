@@ -19,7 +19,7 @@ const Chatbot = () => {
 
   const audioRef = useRef(null);
   const messagesEndRef = useRef(null);
-
+  
   // Play notification sound
   const playSound = () => {
     if (audioRef.current) {
@@ -139,6 +139,7 @@ const Chatbot = () => {
     }
   };
 
+  
   const getInterviewQuestions = async () => {
     if (!selectedCompany) {
       toast.error('Please select a company');

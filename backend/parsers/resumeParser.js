@@ -1,6 +1,9 @@
-const mammoth = require('mammoth');
-const fs = require('fs');
 const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
+const natural = require('natural');
+const fs = require('fs').promises;
+const path = require('path');
+const ocrProcessor = require('../utils/ocrProcessor');
 
 class ResumeParser {
     constructor() {

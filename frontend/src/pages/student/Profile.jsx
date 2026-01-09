@@ -319,6 +319,20 @@ const Profile = () => {
                         </div>
                     )}
                 </div>
+                <div className="mt-6">
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+                        <h3 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">Danger Zone</h3>
+                        <p className="text-sm text-red-700 dark:text-red-300 mb-4">
+                            Once you delete your account, there is no going back. Please be certain.
+                        </p>
+                        <button
+                            onClick={handleDeleteAccount}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+                        >
+                            Delete My Account
+                        </button>
+                    </div>
+                </div>
             </div>
         </Layout>
     );

@@ -4,6 +4,8 @@ import Layout from '../../components/shared/Layout';
 import { jobsAPI } from '../../services/api';
 import { TrendingUp, Mail, User, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ResumeViewer from './ResumeViewer';
+
 
 const ViewApplications = () => {
   const { jobId } = useParams();
@@ -42,6 +44,7 @@ const ViewApplications = () => {
     }
   };
 
+  const [viewingResume, setViewingResume] = useState(null);
   if (loading) return <Layout><div className="spinner mt-20 mx-auto"></div></Layout>;
 
   return (
@@ -86,12 +89,11 @@ const ViewApplications = () => {
                       {Math.round(app.ats_score)}%
                     </span>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    app.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${app.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
                     app.status === 'shortlisted' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
-                    app.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' :
-                    'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                  }`}>
+                      app.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' :
+                        'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    }`}>
                     {app.status}
                   </span>
                 </div>
@@ -147,9 +149,27 @@ const ViewApplications = () => {
                 >
                   Select
                 </button>
+                {/* NEW: View Resume Button */}
+                <button
+                  onClick={() => setViewingResume(app.user_id)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
+                  title="View Resume"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  View Resume
+                </button>
               </div>
             </div>
           ))}
+          {viewingResume && (
+            <ResumeViewer
+              candidateId={viewingResume}
+              onClose={() => setViewingResume(null)}
+            />
+          )}
         </div>
       )}
     </Layout>

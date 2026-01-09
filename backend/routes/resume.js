@@ -8,6 +8,58 @@ const { authenticateToken } = require('../middleware/auth');
 const ResumeParser = require('../parsers/resumeParser');
 const ResumeSuggestions = require('../utils/resumeSuggestions');
 
+// Admin-only middleware
+const adminOnly = async (req, res, next) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+};
+
+
+function calculateATSScore(parsedData, profileData) {
+    let score = 0;
+
+    console.log('📊 Starting ATS calculation...');
+    console.log('Input data:', {
+        skills: parsedData.skills?.length,
+        cgpa: parsedData.cgpa || profileData?.cgpa
+    });
+
+    // 1. Skills Score (40 points)
+    const skills = parsedData.skills || [];
+    const skillsCount = skills.length;
+    const skillsScore = Math.min((skillsCount / 10) * 40, 40);
+    score += skillsScore;
+    console.log(`Skills: ${skillsCount} skills = ${skillsScore} points`);
+
+    // 2. CGPA Score (30 points)
+    const cgpa = parseFloat(parsedData.cgpa || profileData?.cgpa || 0);
+    let cgpaScore = 0;
+    if (cgpa >= 9.0) cgpaScore = 30;
+    else if (cgpa >= 8.0) cgpaScore = 25;
+    else if (cgpa >= 7.0) cgpaScore = 20;
+    else if (cgpa >= 6.0) cgpaScore = 15;
+    else if (cgpa > 0) cgpaScore = 10;
+    score += cgpaScore;
+    console.log(`CGPA: ${cgpa} = ${cgpaScore} points`);
+
+    // 3. Profile Completeness (30 points)
+    let completeness = 0;
+    if (parsedData.f_name && parsedData.l_name) completeness += 10;
+    if (parsedData.email) completeness += 5;
+    if (parsedData.phone) completeness += 5;
+    if (parsedData.branch || profileData?.branch) completeness += 5;
+    if (parsedData.register_number || profileData?.register_number) completeness += 5;
+    score += completeness;
+    console.log(`Completeness: ${completeness} points`);
+
+    const finalScore = Math.round(score);
+    console.log(`✅ Final ATS Score: ${finalScore}%`);
+
+    return finalScore;
+}
+
 // Create uploads directory if it doesn't exist
 const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -42,7 +94,7 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
-// Upload and parse resume
+
 // Upload and parse resume
 router.post('/upload', authenticateToken, upload.single('resume'), async (req, res) => {
     try {
@@ -78,19 +130,27 @@ router.post('/upload', authenticateToken, upload.single('resume'), async (req, r
             throw new Error('Unable to extract readable text from PDF. Please upload a DOCX file or a text-based PDF.');
         }
 
-        // Update profile with resume data (keeping existing register_number)
+        const existingProfile = await pool.query(
+            'SELECT * FROM candidate_profiles WHERE user_id = $1',
+            [req.user.id]
+        );
+        // Calculate ATS Score BEFORE updating profile
+        const atsScore = calculateATSScore(parsedData);
+        console.log('📊 Calculated ATS Score:', atsScore);
+
         const updateQuery = `
-      UPDATE candidate_profiles 
-      SET 
+    UPDATE candidate_profiles 
+    SET 
         f_name = COALESCE($1, f_name),
         m_name = COALESCE($2, m_name),
         l_name = COALESCE($3, l_name),
         cgpa = COALESCE($4, cgpa),
         branch = COALESCE($5, branch),
-        academic_year = COALESCE($6, academic_year)
-      WHERE user_id = $7
-      RETURNING *
-    `;
+        academic_year = COALESCE($6, academic_year),
+        ats_score = COALESCE($7, ats_score)
+    WHERE user_id = $8
+    RETURNING *
+`;
 
         const profileResult = await pool.query(updateQuery, [
             validateField(parsedData.f_name, 255) || null,
@@ -99,8 +159,18 @@ router.post('/upload', authenticateToken, upload.single('resume'), async (req, r
             parsedData.cgpa || null,
             parsedData.branch || null,
             parsedData.academic_year || null,
+            atsScore,  // ADD THIS
             req.user.id
         ]);
+
+        // Store resume file path in database
+        await pool.query(
+            `INSERT INTO resumes (user_id, file_path, uploaded_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (user_id) 
+             DO UPDATE SET file_path = $2, uploaded_at = NOW()`,
+            [req.user.id, req.file.path]
+        );
 
         // Store skills in candidate_skills table
         if (parsedData.skills && parsedData.skills.length > 0) {
@@ -117,7 +187,7 @@ router.post('/upload', authenticateToken, upload.single('resume'), async (req, r
             console.log(`✅ Stored ${parsedData.skills.length} skills in database`);
         }
 
-        // Generate ATS suggestions (THIS IS THE CORRECT PLACEMENT)
+        // Generate ATS suggestions
         const suggestionEngine = new ResumeSuggestions();
         const suggestions = suggestionEngine.generateSuggestions(parsedData, profileResult.rows[0]);
 
@@ -181,24 +251,81 @@ router.get('/profile', authenticateToken, async (req, res) => {
     }
 });
 
-router.get('/view/:candidateId', authMiddleware, adminOnly, async (req, res) => {
-  try {
-    const { candidateId } = req.params;
-    
-    const result = await pool.query(
-      'SELECT file_path FROM resumes WHERE candidate_id = $1',
-      [candidateId]
-    );
+// View resume (Admin only)
+router.get('/view/:candidateId', authenticateToken, adminOnly, async (req, res) => {
+    try {
+        const { candidateId } = req.params;
 
-    if (!result.rows[0]) {
-      return res.status(404).json({ error: 'Resume not found' });
+        // Get candidate info and resume path
+        const result = await pool.query(
+            `SELECT 
+                cp.f_name, 
+                cp.l_name, 
+                u.email,
+                r.file_path
+             FROM candidate_profiles cp
+             JOIN users u ON cp.user_id = u.id
+             LEFT JOIN resumes r ON r.user_id = cp.user_id
+             WHERE cp.user_id = $1`,
+            [candidateId]
+        );
+
+        if (!result.rows[0]) {
+            return res.status(404).json({ error: 'Candidate not found' });
+        }
+
+        const candidate = result.rows[0];
+
+        if (!candidate.file_path) {
+            return res.status(404).json({ error: 'Resume not uploaded yet' });
+        }
+
+        // Convert absolute path to relative URL
+        const fileName = path.basename(candidate.file_path);
+        const resumeUrl = `/uploads/${fileName}`;
+
+        res.json({
+            resumeUrl: resumeUrl,
+            candidate: {
+                name: `${candidate.f_name} ${candidate.l_name}`,
+                email: candidate.email
+            }
+        });
+    } catch (error) {
+        console.error('Resume view error:', error);
+        res.status(500).json({ error: 'Failed to fetch resume' });
     }
+});
 
-    res.json({ resumeUrl: result.rows[0].file_path });
-  } catch (error) {
-    console.error('Resume view error:', error);
-    res.status(500).json({ error: 'Failed to fetch resume' });
-  }
+// Download resume (Admin only)
+router.get('/download/:candidateId', authenticateToken, adminOnly, async (req, res) => {
+    try {
+        const { candidateId } = req.params;
+
+        const result = await pool.query(
+            `SELECT r.file_path, cp.f_name, cp.l_name
+             FROM resumes r
+             JOIN candidate_profiles cp ON r.user_id = cp.user_id
+             WHERE r.user_id = $1`,
+            [candidateId]
+        );
+
+        if (!result.rows[0]) {
+            return res.status(404).json({ error: 'Resume not found' });
+        }
+
+        const filePath = result.rows[0].file_path;
+        const candidateName = `${result.rows[0].f_name}_${result.rows[0].l_name}`;
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Resume file not found on server' });
+        }
+
+        res.download(filePath, `Resume_${candidateName}.pdf`);
+    } catch (error) {
+        console.error('Resume download error:', error);
+        res.status(500).json({ error: 'Failed to download resume' });
+    }
 });
 
 module.exports = router;

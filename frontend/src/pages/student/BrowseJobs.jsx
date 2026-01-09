@@ -36,17 +36,13 @@ const BrowseJobs = () => {
         try {
             const response = await jobsAPI.getMatchPreview(job.id);
             console.log('Raw API Response:', response.data);
+
             const data = response.data;
-            let matchReport = data.match_report;
-            if (typeof matchReport === 'string') {
-                matchReport = JSON.parse(matchReport);
-            }
-            //convert string score to numbers
+
+            // The data should already be in the right format from backend
             const fixedData = {
-                ...data,
                 ats_score: parseFloat(data.ats_score) || 0,
                 match_report: {
-                    ...data.match_report,
                     skills_score: parseFloat(data.match_report?.skills_score) || 0,
                     profile_score: parseFloat(data.match_report?.profile_score) || 0,
                     academic_score: parseFloat(data.match_report?.academic_score) || 0,
@@ -55,10 +51,13 @@ const BrowseJobs = () => {
                     missing_skills: data.match_report?.missing_skills || [],
                     total_required_skills: parseInt(data.match_report?.total_required_skills) || 0,
                     eligibility_reasons: data.match_report?.eligibility_reasons || []
-                }
+                },
+                job_details: data.job_details,
+                already_applied: data.already_applied,
+                can_apply: data.can_apply
             };
 
-            console.log('Fixed ATS Data:', fixedData); // Debug
+            console.log('Fixed ATS Data:', fixedData);
             setAtsPreview(fixedData);
         } catch (error) {
             console.error('Error:', error);
